@@ -1,6 +1,8 @@
-﻿using TestTaskForByndyusoft.Core.Exceptions;
+﻿using System.Linq;
+using TestTaskForByndyusoft.Core.Exceptions;
 using TestTaskForByndyusoft.Core.Expression;
 using TestTaskForByndyusoft.Core.Expression.Nodes;
+using TestTaskForByndyusoft.Core.Expression.Operators;
 using TestTaskForByndyusoft.Core.Expression.Operators.Binary;
 using TestTaskForByndyusoft.Core.Expression.Operators.Unary;
 using TestTaskForByndyusoft.Core.Formatters;
@@ -15,6 +17,11 @@ namespace TestTaskForByndyusoft.Core.Parser
         private readonly MathematicalExpressionValidator _validator;
         private readonly MathematicalExpressionFormatter _formatter;
 
+        private readonly List<UnaryOperator> _unaryOperators;
+        private readonly List<BinaryOperator> _binaryOperators;
+
+        private readonly List<OperatorPriority> _operatorPriorities;
+
         public MathematicalExpressionParser(string expression)
         {
             _validator = new MathematicalExpressionValidator();
@@ -26,6 +33,12 @@ namespace TestTaskForByndyusoft.Core.Parser
 
             _tokenizer = new Tokenizer(formattedExpression);
 
+            _unaryOperators = FindOperators<UnaryOperator>();
+            _binaryOperators = FindOperators<BinaryOperator>();
+
+            _operatorPriorities = Enum.GetValues<OperatorPriority>()
+                .OrderByDescending(operatorPriority => operatorPriority)
+                .ToList();
         }
 
         public static MathematicalExpression Parse(string expression)
@@ -37,27 +50,30 @@ namespace TestTaskForByndyusoft.Core.Parser
 
         public MathematicalExpression Parse()
         {
-            var rootNode = ParseAddSubtractNode();
+            var rootNode = ParseRootNode();
 
             return new MathematicalExpression(rootNode);
         }
 
-        private Node ParseAddSubtractNode()
+        private Node ParseRootNode()
         {
-            var left = ParseMultiplyDivideNode();
+            return ParseBinaryNode(_operatorPriorities.First());
+        }
+
+        private Node ParseBinaryNode(OperatorPriority operatorPriority)
+        {
+            var operatorPriorityIndex = _operatorPriorities.IndexOf(operatorPriority);
+            var hasPriorityOperatorPriority = operatorPriorityIndex != _operatorPriorities.Count - 1;
+
+            var left = hasPriorityOperatorPriority
+                ? ParseBinaryNode(_operatorPriorities.ElementAt(operatorPriorityIndex + 1)) 
+                : ParseUnaryNode();
 
             while (true)
             {
-                var binaryOperator = null as BinaryOperator;
-
-                if (_tokenizer.CurrentToken == Token.Add)
-                {
-                    binaryOperator = new AddOperator();
-                }
-                else if (_tokenizer.CurrentToken == Token.Subtract)
-                {
-                    binaryOperator = new SubtractOperator();
-                }
+                var binaryOperator = _binaryOperators
+                    .FirstOrDefault(binaryOperator => binaryOperator.Token == _tokenizer.CurrentToken &&
+                        binaryOperator.Priority == operatorPriority);
 
                 if (binaryOperator is null)
                 {
@@ -66,42 +82,13 @@ namespace TestTaskForByndyusoft.Core.Parser
 
                 _tokenizer.NextToken();
 
-                var right = ParseMultiplyDivideNode();
+                var right = hasPriorityOperatorPriority
+                    ? ParseBinaryNode(_operatorPriorities.ElementAt(operatorPriorityIndex + 1))
+                    : ParseUnaryNode();
 
                 left = new BinaryNode(left, right, binaryOperator);
             }
         }
-
-        private Node ParseMultiplyDivideNode()
-        {
-            var left = ParseUnaryNode();
-
-            while (true)
-            {
-                var binaryOperator = null as BinaryOperator;
-
-                if (_tokenizer.CurrentToken == Token.Multiply)
-                {
-                    binaryOperator = new MultiplyOperator();
-                }
-                else if (_tokenizer.CurrentToken == Token.Divide)
-                {
-                    binaryOperator = new DivideOperator();
-                }
-
-                if (binaryOperator is null)
-                {
-                    return left;
-                }
-
-                _tokenizer.NextToken();
-
-                var right = ParseUnaryNode();
-
-                left = new BinaryNode(left, right, binaryOperator);
-            }
-        }
-
 
         private Node ParseUnaryNode()
         {
@@ -114,13 +101,16 @@ namespace TestTaskForByndyusoft.Core.Parser
                     continue;
                 }
 
-                if (_tokenizer.CurrentToken == Token.Subtract)
+                var unaryOperator = _unaryOperators
+                    .FirstOrDefault(unaryOperator => unaryOperator.Token == _tokenizer.CurrentToken);
+
+                if (unaryOperator is not null)
                 {
                     _tokenizer.NextToken();
 
                     var right = ParseUnaryNode();
 
-                    return new UnaryNode(right, new MinusUnaryOperator());
+                    return new UnaryNode(right, unaryOperator);
                 }
 
                 return ParseLeafNode();
@@ -142,7 +132,7 @@ namespace TestTaskForByndyusoft.Core.Parser
             {
                 _tokenizer.NextToken();
 
-                var node = ParseAddSubtractNode();
+                var node = ParseBinaryNode(_operatorPriorities.First());
 
                 if (_tokenizer.CurrentToken != Token.CloseParens)
                 {
@@ -155,6 +145,28 @@ namespace TestTaskForByndyusoft.Core.Parser
             }
 
             throw new MathematicalExpressionSyntaxException($"Unexpect token: {_tokenizer.CurrentNumber}");
+        }
+
+        private List<T> FindOperators<T>() 
+            where T : Operator
+        {
+            var operators = new List<T>();
+
+            var operatorTypes = typeof(MathematicalExpressionParser).Assembly.GetTypes()
+                .Where(type => type.IsSubclassOf(typeof(T)))
+                .ToList();
+
+            foreach (var operatorType in operatorTypes)
+            {
+                var instance = Activator.CreateInstance(operatorType);
+
+                if (instance is not null)
+                {
+                    operators.Add((T)instance);
+                }
+            }
+
+            return operators;
         }
     }
 }

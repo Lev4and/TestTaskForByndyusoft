@@ -1,5 +1,7 @@
 ﻿using System.Globalization;
+using System.Reflection;
 using System.Text;
+using TestTaskForByndyusoft.Core.Attributes;
 
 namespace TestTaskForByndyusoft.Core.Parser
 {
@@ -8,16 +10,7 @@ namespace TestTaskForByndyusoft.Core.Parser
         private const char EndOfExpression = '\0';
 
         private readonly IEnumerator<char> _expressionEnumerator;
-        private readonly IDictionary<char, Token> _tokensDictionary =
-            new Dictionary<char, Token>()
-            {
-                { '+', Token.Add },
-                { '-', Token.Subtract },
-                { '*', Token.Multiply },
-                { '/', Token.Divide },
-                { '(', Token.OpenParens },
-                { ')', Token.CloseParens },
-            };
+        private readonly IDictionary<char, Token> _tokensDictionary;
 
         private char _currentChar;
         private Token _currentToken;
@@ -31,6 +24,8 @@ namespace TestTaskForByndyusoft.Core.Parser
         {
             _expressionEnumerator = expression.GetEnumerator();
             _expressionEnumerator.MoveNext();
+
+            _tokensDictionary = GetTokensDictionary();
 
             _currentChar = _expressionEnumerator.Current;
 
@@ -88,6 +83,26 @@ namespace TestTaskForByndyusoft.Core.Parser
             _currentChar = isMoved
                 ? _expressionEnumerator.Current
                 : EndOfExpression;
+        }
+
+        private IDictionary<char, Token> GetTokensDictionary()
+        {
+            var result = new Dictionary<char, Token>();
+
+            var tokens = Enum.GetValues<Token>();
+
+            foreach (var token in tokens)
+            {
+                var attribute = typeof(Token).GetField(token.ToString())
+                    ?.GetCustomAttribute<TokenCharDesignationAttribute>();
+
+                if (attribute is not null)
+                {
+                    result.Add(attribute.Designation, token);
+                }
+            }
+
+            return result;
         }
     }
 }

@@ -2,7 +2,7 @@
 
 namespace TestTaskForByndyusoft.Core.Expression.Operators.Unary
 {
-    public abstract class UnaryOperator
+    public abstract class UnaryOperator : Operator
     {
         public abstract decimal Calculate(Node node);
 

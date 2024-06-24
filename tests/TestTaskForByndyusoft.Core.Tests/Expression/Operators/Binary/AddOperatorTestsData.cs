@@ -1,5 +1,6 @@
 ﻿using TestTaskForByndyusoft.Core.Expression.Nodes;
 using TestTaskForByndyusoft.Core.Expression.Operators.Binary;
+using TestTaskForByndyusoft.Core.Expression.Operators.Unary;
 
 namespace TestTaskForByndyusoft.Core.Tests.Expression.Operators.Binary
 {
@@ -15,6 +16,7 @@ namespace TestTaskForByndyusoft.Core.Tests.Expression.Operators.Binary
                 Add(new NumberNode(2), new NumberNode(2.2m), 4.2m);
                 Add(new NumberNode(-5), new NumberNode(10), 5);
                 Add(new NumberNode(-5), new NumberNode(-10), -15);
+                Add(new UnaryNode(new NumberNode(5), new MinusUnaryOperator()), new NumberNode(3), -2);
             }
         }
     }

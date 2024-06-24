@@ -21,6 +21,8 @@ namespace TestTaskForByndyusoft.Core.Tests.Expression
         {
             public ParseAndCalculate()
             {
+                Add("+ 5 - 3", 2);
+                Add("- 5 + 3", -2);
                 Add("1 + 2 - 3", 0);
                 Add("(5 * 10 / 5 + 10) + ((35 - 10 + 5 * 5) / 5) + 25 - 15", 40);
             }

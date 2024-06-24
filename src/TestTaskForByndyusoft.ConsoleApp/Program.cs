@@ -1,12 +1,19 @@
 ﻿using TestTaskForByndyusoft.Core.Expression;
 using TestTaskForByndyusoft.Core.Parser;
 
+var builder = new MathematicalExpressionParserSettingsBuilder();
+
+var settings = builder.RegisterUnaryOperator(typeof(Program).Assembly)
+    .RegisterBinaryOperator(typeof(Program).Assembly)
+    .Build();
+
 while (true)
 {
     try
     {
         var expression = GetMathematicalExpression();
-        var parsedExpression = ParseMathematicalExpression(expression);
+
+        var parsedExpression = ParseMathematicalExpression(expression, settings);
         var calculatedResult = CalculateMathematicalExpression(parsedExpression);
 
         OutputCalculatedResult(calculatedResult);
@@ -24,9 +31,10 @@ static string GetMathematicalExpression()
     return InputString();
 }
 
-static MathematicalExpression ParseMathematicalExpression(string expression)
+static MathematicalExpression ParseMathematicalExpression(string expression, 
+    MathematicalExpressionParserSettings settings)
 {
-    return MathematicalExpressionParser.Parse(expression);
+    return MathematicalExpressionParser.Parse(expression, settings);
 }
 
 static decimal CalculateMathematicalExpression(MathematicalExpression mathematicalExpression)

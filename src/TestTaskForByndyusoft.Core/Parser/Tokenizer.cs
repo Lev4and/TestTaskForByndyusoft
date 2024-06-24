@@ -1,31 +1,28 @@
 ﻿using System.Globalization;
-using System.Reflection;
 using System.Text;
-using TestTaskForByndyusoft.Core.Attributes;
+using TestTaskForByndyusoft.Core.Constants;
 
 namespace TestTaskForByndyusoft.Core.Parser
 {
     public class Tokenizer
     {
-        private const char EndOfExpression = '\0';
-
         private readonly IEnumerator<char> _expressionEnumerator;
-        private readonly IDictionary<char, Token> _tokensDictionary;
 
         private char _currentChar;
-        private Token _currentToken;
+        private char _currentToken;
         private decimal _currentNumber;
+        private TokenType _currentTokenType;
 
-        public Token CurrentToken => _currentToken;
+        public char CurrentToken => _currentToken;
 
         public decimal CurrentNumber => _currentNumber;
+
+        public TokenType CurrentTokenType => _currentTokenType;
 
         public Tokenizer(string expression)
         {
             _expressionEnumerator = expression.GetEnumerator();
             _expressionEnumerator.MoveNext();
-
-            _tokensDictionary = GetTokensDictionary();
 
             _currentChar = _expressionEnumerator.Current;
 
@@ -39,16 +36,22 @@ namespace TestTaskForByndyusoft.Core.Parser
                 NextChar();
             }
 
-            if (_currentChar == EndOfExpression)
+            if (_currentChar == TokenConstants.EndOfExpression)
             {
-                _currentToken = Token.EndOfExpression;
+                _currentTokenType = TokenType.EndOfExpression;
+                _currentToken = TokenConstants.EndOfExpression;
 
                 return;
             }
 
-            if (_tokensDictionary.ContainsKey(_currentChar))
+            if (!char.IsDigit(_currentChar) || _currentChar == TokenConstants.OpenParens || 
+                _currentChar == TokenConstants.CloseParens)
             {
-                _currentToken = _tokensDictionary[_currentChar];
+                _currentToken = _currentChar;
+
+                if (char.IsSymbol(_currentChar)) _currentTokenType = TokenType.Symbol;
+                else if (_currentChar == TokenConstants.OpenParens) _currentTokenType = TokenType.OpenParens;
+                else _currentTokenType = TokenType.CloseParens;
 
                 NextChar();
 
@@ -70,7 +73,9 @@ namespace TestTaskForByndyusoft.Core.Parser
                 }
 
                 _currentNumber = decimal.Parse(stringBuilder.ToString(), CultureInfo.InvariantCulture);
-                _currentToken = Token.Number;
+                
+                _currentToken = '\0';
+                _currentTokenType = TokenType.Number;
 
                 return;
             }
@@ -82,27 +87,7 @@ namespace TestTaskForByndyusoft.Core.Parser
 
             _currentChar = isMoved
                 ? _expressionEnumerator.Current
-                : EndOfExpression;
-        }
-
-        private IDictionary<char, Token> GetTokensDictionary()
-        {
-            var result = new Dictionary<char, Token>();
-
-            var tokens = Enum.GetValues<Token>();
-
-            foreach (var token in tokens)
-            {
-                var attribute = typeof(Token).GetField(token.ToString())
-                    ?.GetCustomAttribute<TokenCharDesignationAttribute>();
-
-                if (attribute is not null)
-                {
-                    result.Add(attribute.Designation, token);
-                }
-            }
-
-            return result;
+                : TokenConstants.EndOfExpression;
         }
     }
 }

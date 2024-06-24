@@ -5,7 +5,7 @@ namespace TestTaskForByndyusoft.Core.Expression.Operators.Unary
 {
     public class MinusUnaryOperator : UnaryOperator
     {
-        public override Token Token => Token.Subtract;
+        public override char Token => '-';
 
         public override OperatorPriority Priority => OperatorPriority.Second;
 

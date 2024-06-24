@@ -5,9 +5,9 @@ namespace TestTaskForByndyusoft.Core.Expression.Operators.Binary
 {
     public class SubtractOperator : BinaryOperator
     {
-        public override Token Token => Token.Subtract;
+        public override char Token => '-';
 
-        public override OperatorPriority Priority => OperatorPriority.Second;
+        public override OperatorPriority Priority => OperatorPriority.Third;
 
         public override decimal Calculate(Node left, Node right)
         {

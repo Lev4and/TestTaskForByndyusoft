@@ -1,10 +1,11 @@
-﻿using System.Linq;
+﻿using TestTaskForByndyusoft.Core.Constants;
 using TestTaskForByndyusoft.Core.Exceptions;
 using TestTaskForByndyusoft.Core.Expression;
 using TestTaskForByndyusoft.Core.Expression.Nodes;
 using TestTaskForByndyusoft.Core.Expression.Operators;
 using TestTaskForByndyusoft.Core.Expression.Operators.Binary;
 using TestTaskForByndyusoft.Core.Expression.Operators.Unary;
+using TestTaskForByndyusoft.Core.Extensions;
 using TestTaskForByndyusoft.Core.Formatters;
 using TestTaskForByndyusoft.Core.Validators;
 
@@ -22,7 +23,14 @@ namespace TestTaskForByndyusoft.Core.Parser
 
         private readonly List<OperatorPriority> _operatorPriorities;
 
-        public MathematicalExpressionParser(string expression)
+        public MathematicalExpressionParser(string expression) : 
+            this(expression, new MathematicalExpressionParserSettings())
+        {
+
+        }
+
+        public MathematicalExpressionParser(string expression, 
+            MathematicalExpressionParserSettings settings)
         {
             _validator = new MathematicalExpressionValidator();
             _formatter = new MathematicalExpressionFormatter();
@@ -33,8 +41,15 @@ namespace TestTaskForByndyusoft.Core.Parser
 
             _tokenizer = new Tokenizer(formattedExpression);
 
-            _unaryOperators = FindOperators<UnaryOperator>();
-            _binaryOperators = FindOperators<BinaryOperator>();
+            _unaryOperators = typeof(MathematicalExpressionParser).Assembly
+                .GetOperators<UnaryOperator>();
+
+            _unaryOperators.AddRange(settings.CustomUnaryOperators);
+
+            _binaryOperators = typeof(MathematicalExpressionParser).Assembly
+                .GetOperators<BinaryOperator>();
+
+            _binaryOperators.AddRange(settings.CustomBinaryOperators);
 
             _operatorPriorities = Enum.GetValues<OperatorPriority>()
                 .OrderByDescending(operatorPriority => operatorPriority)
@@ -43,7 +58,12 @@ namespace TestTaskForByndyusoft.Core.Parser
 
         public static MathematicalExpression Parse(string expression)
         {
-            var parser = new MathematicalExpressionParser(expression);
+            return Parse(expression, new MathematicalExpressionParserSettings());
+        }
+
+        public static MathematicalExpression Parse(string expression, MathematicalExpressionParserSettings settings)
+        {
+            var parser = new MathematicalExpressionParser(expression, settings);
 
             return parser.Parse();
         }
@@ -94,7 +114,7 @@ namespace TestTaskForByndyusoft.Core.Parser
         {
             while (true)
             {
-                if (_tokenizer.CurrentToken == Token.Add)
+                if (_tokenizer.CurrentToken == TokenConstants.AddOperator)
                 {
                     _tokenizer.NextToken();
 
@@ -119,7 +139,7 @@ namespace TestTaskForByndyusoft.Core.Parser
 
         private Node ParseLeafNode()
         {
-            if (_tokenizer.CurrentToken == Token.Number)
+            if (_tokenizer.CurrentTokenType == TokenType.Number)
             {
                 var node = new NumberNode(_tokenizer.CurrentNumber);
 
@@ -128,13 +148,13 @@ namespace TestTaskForByndyusoft.Core.Parser
                 return node;
             }
 
-            if (_tokenizer.CurrentToken == Token.OpenParens)
+            if (_tokenizer.CurrentTokenType == TokenType.OpenParens)
             {
                 _tokenizer.NextToken();
 
                 var node = ParseBinaryNode(_operatorPriorities.First());
 
-                if (_tokenizer.CurrentToken != Token.CloseParens)
+                if (_tokenizer.CurrentTokenType != TokenType.CloseParens)
                 {
                     throw new MathematicalExpressionSyntaxException("Missing close parenthesis");
                 }
@@ -145,28 +165,6 @@ namespace TestTaskForByndyusoft.Core.Parser
             }
 
             throw new MathematicalExpressionSyntaxException($"Unexpect token: {_tokenizer.CurrentNumber}");
-        }
-
-        private List<T> FindOperators<T>() 
-            where T : Operator
-        {
-            var operators = new List<T>();
-
-            var operatorTypes = typeof(MathematicalExpressionParser).Assembly.GetTypes()
-                .Where(type => type.IsSubclassOf(typeof(T)))
-                .ToList();
-
-            foreach (var operatorType in operatorTypes)
-            {
-                var instance = Activator.CreateInstance(operatorType);
-
-                if (instance is not null)
-                {
-                    operators.Add((T)instance);
-                }
-            }
-
-            return operators;
         }
     }
 }

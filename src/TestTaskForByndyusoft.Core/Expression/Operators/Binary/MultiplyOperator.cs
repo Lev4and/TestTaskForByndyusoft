@@ -5,9 +5,9 @@ namespace TestTaskForByndyusoft.Core.Expression.Operators.Binary
 {
     public class MultiplyOperator : BinaryOperator
     {
-        public override Token Token => Token.Multiply;
+        public override char Token => '*';
 
-        public override OperatorPriority Priority => OperatorPriority.First;
+        public override OperatorPriority Priority => OperatorPriority.Second;
 
         public override decimal Calculate(Node left, Node right)
         {
